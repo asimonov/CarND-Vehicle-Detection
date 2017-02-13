@@ -4,8 +4,8 @@
 
 [//]: # (References)
 [image1]: ./examples/hot_windows_example.png
-[image2]: ./examples/example_diagnostics1.png
-[image3]: ./examples/example_diagnostics2.png
+[image2]: ./examples/diagnostics.png
+
 [image4]: ./examples/sliding64.png
 
 [image5]: ./examples/bboxes_and_heat.png
@@ -23,9 +23,9 @@ The notebook visualizes the features for couple of example images.
 
 I then define `extract_features` that combines the three types of features above for an input image.
 
-`extract_features` is run on the provided dataset with YUV colorspace and then sklearn `StandardScaler()` is calibrated on the full feature set.
+`extract_features` is run on the provided dataset with YCrCb colorspace and then sklearn `StandardScaler()` is calibrated on the full feature set.
 
-I then train `sklearn.LinearSVC` classifier on the full labelled scaled feature set. It gives accuracy of 99.3% on random test set of 20% of the original data.
+I then train `sklearn.LinearSVC` classifier on the full labelled scaled feature set. It gives accuracy of 99.5% on validation set of 20% of the original data.
 
 I then use `slide_window` function from the lectures to generate a set of windows covering ROI (region of interest), which roughly corresponds to horizontal area of input image from just above the bonnet to just over the horizon. I generate windows in two scales: 128x128 px and 64x64 px. They empirically produce the best results.
 
@@ -78,7 +78,7 @@ as the performance of the classifier was sufficient to subsequently eliminate fa
 ####2. Explain how you settled on your final choice of HOG parameters.
 
 **Alexey Simonov**: 
-I have not tried many combinations of parameters. Playing with colorspace produced good enough classification accuracy to then eliminate false positives in car tracking/heatmaps code, so I stopped experimenting.
+I have not tried many combinations of parameters. Playing with colorspace and tweaking averaging/tracking parameters produced good enough classification accuracy to eliminate false positives, so I stopped experimenting.
 
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
@@ -104,12 +104,14 @@ The actual search is done in `search_windows` function which takes an image, win
 ####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 **Alexey Simonov**: 
-`process_diagnostic_views` function in `VehicleDetector` class is a wrapper around `process_image` function. It adds extra information to the final image, detailing steps of the pipeline like window detections, heatmaps etc. Its output is demonstrated next (sorry about the non-matching scales as its not easy to grab the whole image on one screen):
+`process_diagnostic_views` function in `VehicleDetector` class is a wrapper around `process_image` function. It adds extra information to the final image, detailing steps of the pipeline like window detections, heatmaps etc. Its output is demonstrated next:
 
-![diagnostic view 1][image2]
-![diagnostic view 2][image3]
+![diagnostic view of the pipeline][image2]
 
 In the above image the low four images, from left to right from top to bottom are as follows: raw windows identified, raw heatmap, thresholded heatmap, labelled regions.
+
+The final project video (just Vehicle Detection) shows full diagnostic view [here](./project_video_annotated_vehicles.mp4) 
+
 
 ---
 
@@ -119,13 +121,16 @@ In the above image the low four images, from left to right from top to bottom ar
 
 **Alexey Simonov**: 
 
-I have taken video with lane lines annotated and processed it using Vehicle Detection pipeline.
-Here's a [link to my video result](./project_video_annotated3.mp4). This is the 'diagnostic view' version that also shows intermediate pipeline stages.
+First I have taken video with lane lines annotated and processed it using Vehicle Detection pipeline.
+It did not work quite well as lane annotations were leading to false positives in car detections.
+So I used the raw project video to process vehicle detection only.
+Here's the [result](./project_video_annotated_vehicles.mp4). 
+This is the 'diagnostic view' version that also shows intermediate pipeline stages.
 
-Strictly speaking I should have used both pipelines on raw images from the video, but due to lack of time I have run vehicle detection on already annotated video. It did not result in inferior performance of vehicle detection pipeline due potentially to extra visual features superimposed by lane detection.
+I have then combined both Lane Detection and Vehicle Detection pipelines to produce [fully annotated version](./project_video_annotated_lanes_and_vehicles.mp4)
 
 
-####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
+####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes. It does not show diagnostic view for various pipeline stages.
 
 **Alexey Simonov**: 
 
