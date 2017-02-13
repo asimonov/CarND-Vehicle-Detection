@@ -1,28 +1,55 @@
-##Writeup Template
-###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+## Udacity Self-Driving Car Engineer Nanodegree Project 5: Vehicle Detection
 
 ---
 
-**Vehicle Detection Project**
-
-The goals / steps of this project are the following:
-
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
-* Estimate a bounding box for vehicles detected.
-
-[//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
+[//]: # (References)
+[image1]: ./examples/hot_windows_example.png
+[image2]: ./examples/example_diagnostics1.png
+[image3]: ./examples/example_diagnostics2.png
 [image4]: ./examples/sliding_window.jpg
 [image5]: ./examples/bboxes_and_heat.png
 [image6]: ./examples/labels_map.png
 [image7]: ./examples/output_bboxes.png
 [video1]: ./project_video.mp4
+
+The whole project is implemented in one Jupyter Notebook [`vehicle-detection.ipynb`](./vehicle-detection.ipynb). The notebook is well commented throughout and should be read as part of this documentation.
+
+I first load data into `allimages` and `alllabels` variables.
+In total we have 17760 images of cars and non-cars, almost equally split between these two classes.
+
+I then define functions `features_spatial` (just pixel values of 32x32 resized image presented as one vector), `features_color_hist` (color histogram in specified color space, presented as one vector) and `features_hog` (HOG features extracted using skimage `hog` function and returned as one vector).
+The notebook visualizes the features for couple of example images.
+
+I then define `extract_features` that combines the three types of features above for an input image.
+
+`extract_features` is run on the provided dataset with YUV colorspace and then sklearn `StandardScaler()` is calibrated on the full feature set.
+
+I then train `sklearn.LinearSVC` classifier on the full labelled scaled feature set. It gives accuracy of 99.3% on random test set of 20% of the original data.
+
+I then use `slide_window` function from the lectures to generate a set of windows covering ROI (region of interest), which roughly corresponds to horizontal area of input image from just above the bonnet to just over the horizon. I generate windows in two scales: 128x128 px and 64x64 px. They empirically produce the best results.
+
+I then define function `search_windows` that takes full image and list of windows to search and runs classifier on those areas. It returns list of windows classified to be _cars_, as well as `decision_values` from SVM classifier (that correspond to distance of the image from the decision boundary, the bigger the value the more probable that this detection is `true positive`. The following image shows example hot windows identified, with red circle size proportional to decision function values:
+
+![matched windows with probabilities as circles][image1]
+
+`make_heatmap` and `apply_threshold` functions produce heatmap of the detections, taking into account decision function values. `draw_labeled_bboxes` function finds bounding boxes for identified blobs in heatmap, filters out what would be an improbable box for a car (too small in either direction, or too 'vertical').
+
+`VehicleDetector` class defined to keep Vehicle Detection Pipeline parameters, as well as heatmaps in consecutive frames for averaging over video stream. `process_image` is the main working function in this class, which combines calls to functions mentioned above plus the tracking code that averages the heatmaps and produces final detections. `process_diagnostic_views` function is a wrapper around `process_image` that adds extra information to the final image, detailing steps of the pipeline like window detections, heatmaps etc. Its output is demonstrated next (sorry about the non-matching scales as its not easy to grab the whole image on one screen):
+
+![diagnostic view 1][image2]
+![diagnostic view 2][image3]
+
+### Performance considerations
+
+The 'single HOG extraction for entire image' is not implemented due to time constraints.
+In its current version the pipeline extracts HOG features from each window image, which is inefficient.
+It takes about 2.2 sec to process one frame on my laptop, hardly a real-time speed required in a real car.
+
+I did quick profiling of the pipeline. And after few improvements (batch prediction for all windows is the one worth mentioning)
+the most time spent in the pipeline on:
+
+
+
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -32,28 +59,27 @@ The goals / steps of this project are the following:
 
 ####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
 
+**Alexey Simonov**: 
 You're reading it!
+
 
 ###Histogram of Oriented Gradients (HOG)
 
 ####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+**Alexey Simonov**: 
+I used skimage version of HOG. You can see this in function `features_hog`. You can see an example of its use after its defined in the notebook.
 
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+I have found empirically that YUV colorspace for HOG features works better than RGB.
+I did not play much with different HOG parameters, such as `orientations`, `pixels_per_cell`, and `cells_per_block`)
+as the performance of the classifier was sufficient to subsequently eliminate false positives. 
 
-![alt text][image1]
-
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
-
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-
-
-![alt text][image2]
 
 ####2. Explain how you settled on your final choice of HOG parameters.
 
+**Alexey Simonov**: 
 I tried various combinations of parameters and...
+
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
