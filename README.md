@@ -68,11 +68,11 @@ You're reading it!
 ####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
 **Alexey Simonov**: 
-I used skimage version of HOG. You can see this in function `features_hog`. You can see an example of its use after it is defined in the notebook.
+I used `skimage` version of HOG. You can see this in function `features_hog`. You can see an example of its use after it is defined in the notebook.
 
-I have found empirically that YUV colorspace for HOG features works better than RGB.
+I have found empirically that YCrCb colorspace for HOG features works better than RGB. And YUV is slightly worse than YCrCb.
 I did not play much with different HOG parameters, such as `orientations`, `pixels_per_cell`, and `cells_per_block`)
-as the performance of the classifier was sufficient to subsequently eliminate false positives. 
+as the performance of the classifier was sufficient to subsequently eliminate false positives using other techniques.
 
 
 ####2. Explain how you settled on your final choice of HOG parameters.
@@ -84,8 +84,8 @@ I have not tried many combinations of parameters. Playing with colorspace and tw
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
 **Alexey Simonov**: 
-I trained a `sklearn`'s `LinearSVM`. Please look at the notebook as it's usage is self-documenting.
-It achieves 99.1-99.3% accuracy, depending on the color encoding, the best being YUV with YCbCr close second.
+I trained an `sklearn`'s `LinearSVM`. Please look at the notebook as it's usage is self-documenting.
+It achieves 99.5% accuracy with YCbCr color encoding. For RGB the accuracy was around 99%.
 
 
 ###Sliding Window Search
@@ -93,7 +93,7 @@ It achieves 99.1-99.3% accuracy, depending on the color encoding, the best being
 ####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
 **Alexey Simonov**: 
-I have generated sliding windows in scales: 128, 96, 64, 48 and 32.
+I have generated sliding windows in the following scales: 128, 96, 64, 48 and 32.
 After playing around with various combinations of overlap and reading the slack channel I settled on using two window scales: 128 and 64 px square. They overlap at a fraction of 0.25, giving me 800 window positions to search within the region of interest, as described above. Here is the visualization for 64px windows:
 
 ![sliding window tiling at 64 px][image4]
@@ -127,10 +127,10 @@ So I used the raw project video to process vehicle detection only.
 Here's the [result](./project_video_annotated_vehicles.mp4). 
 This is the 'diagnostic view' version that also shows intermediate pipeline stages.
 
-I have then combined both Lane Detection and Vehicle Detection pipelines to produce [fully annotated version](./project_video_annotated_lanes_and_vehicles.mp4)
+I have then combined both Lane Detection and Vehicle Detection pipelines to produce [fully annotated version](./project_video_annotated_lanes_and_vehicles.mp4). It does not show diagnostic view for various pipeline stages.
 
 
-####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes. It does not show diagnostic view for various pipeline stages.
+####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes. 
 
 **Alexey Simonov**: 
 
@@ -153,4 +153,19 @@ Second parameter for heatmap thresholding is applied to the average of individua
 
 **Alexey Simonov**: 
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The main issues were false positives and performance.
+In its current version it was taking me about 50 minutes to process full video. So I had to work with subclips most of the time.
+For false positives I investigated the following approaches:
+
+* change sizes/positions of search windows
+* change classifier to SVC and play with parameters
+* play with parameters of feature extraction, such as color space
+* play with heatmap averaging and thresholding parameters
+
+Once I added 'diagnostic views' of the pipeline to the video my workflow became more streamlined as I would see what parameters I need to tweak before the next iteration without trying to figure out from the final output where in the pipeline the problem is best addressed.
+
+The pipeline as it is obviously depends on the input training data. 
+It is limited to day/night and weather conditions of the provided dataset.
+It is also limited to car makes and colors prevailing at where the training images were taken. So, running it on a video of some other country highway may result in it not detecting cars which are older or dirty, for example.
+Also, I would imagine running it on a video of urban environment will produce lots of false positives as some of buildings colors/shapes may look like those of cars to the classifier as it is.
+
