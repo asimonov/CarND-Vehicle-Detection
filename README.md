@@ -110,6 +110,28 @@ The actual search is done in `search_windows` function which takes an image, win
 
 In the above image the low four images, from left to right from top to bottom are as follows: raw windows identified, raw heatmap, thresholded heatmap, labelled regions.
 
+Having the diagnostic view of the pipeline was really beneficial for me to understand where my
+classifier performance needs improvement. I started with RGB colorspace and tried both LinearSVC
+and SVC with kernels 'linear' and 'rbf'. RBF kernel was too slow so I did not even use it in
+window search. Linear SVM was giving 99%+ accuracy, but there were still too many false positives
+on individual frames, sometimes sequentially. So I could not eliminate them successfully using
+heatmap averaging.
+At this point I started to use decision function values (and show them in my diagnostic view as red
+circles with radius proportional to decision function value). I was weighting my heatmaps with decision
+function values. That improved things. But when false positives appeared in sequential frames I
+still could not eliminate them using thresholding only.
+
+That's when I returned to feature engineering. I first tried to use ALL channels for HOG, which
+improved things a little, but still not enough.
+Then I switched to YUV color space. This was a good step forward as I started to see less false
+positives and they started to be more random, not appearing in consequtive frames.
+But the main improvement was to switch to YCrCb color space. That practically eliminated all false
+positives. Even though it improved classifier validation performance by just 0.1% the result
+on the video was perfect. And of course along all these steps I had multiple iterations trying
+to fine-tune heatmap averaging and thresholding parameters, but what I have found is the performance
+of the classifier is key.
+
+
 The final project video (just Vehicle Detection) shows full diagnostic view [here](./project_video_annotated_vehicles.mp4) 
 
 
